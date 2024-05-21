@@ -106,6 +106,7 @@ void ThreadPool::Schedule(TaskFunc func, void* arg) {
   if (node_cnt_.load(std::memory_order_relaxed) >= queue_slow_size_) {
     std::this_thread::yield();
   }
+    std::unique_lock lock(mu_);
   if (LIKELY(!should_stop())) {
     auto node = new Node(func, arg);
     LinkOne(node, &newest_node_);
@@ -122,6 +123,7 @@ void ThreadPool::DelaySchedule(uint64_t timeout, TaskFunc func, void* arg) {
   uint64_t unow = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
   uint64_t exec_time = unow + timeout * 1000;
 
+    std::unique_lock lock(mu_);
   if (LIKELY(!should_stop())) {
     auto node = new Node(exec_time, func, arg);
     LinkOne(node, &time_newest_node_);
@@ -148,7 +150,6 @@ void ThreadPool::runInThread() {
       return newest_node_.load(std::memory_order_relaxed) != nullptr ||
              UNLIKELY(time_newest_node_.load(std::memory_order_relaxed) != nullptr) || UNLIKELY(should_stop());
     });
-    lock.unlock();
 
   retry:
     if (UNLIKELY(should_stop())) {
@@ -236,6 +237,7 @@ void ThreadPool::runInThread() {
     }
 
   exec:
+    lock.unlock();
     // do all normal tasks older than this task pointed last
     if (LIKELY(last != nullptr)) {
       int cnt = 0;
@@ -277,7 +279,7 @@ void ThreadPool::runInThread() {
         delete tmp;
       } while (time_first != nullptr);
     }
-    goto retry;
+    // goto retry;
   }
 }
 

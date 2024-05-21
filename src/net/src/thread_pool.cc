@@ -156,6 +156,7 @@ void ThreadPool::runInThread() {
       break;
     }
 
+    lock.unlock();
     last = newest_node_.exchange(nullptr);
     time_last = time_newest_node_.exchange(nullptr);
     if (last == nullptr && LIKELY(time_last == nullptr)) {
@@ -237,7 +238,6 @@ void ThreadPool::runInThread() {
     }
 
   exec:
-    lock.unlock();
     // do all normal tasks older than this task pointed last
     if (LIKELY(last != nullptr)) {
       int cnt = 0;

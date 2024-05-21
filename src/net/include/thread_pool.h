@@ -8,22 +8,22 @@
 
 #include <pthread.h>
 #include <atomic>
-#include <queue>
 #include <string>
 
 #include "net/include/net_define.h"
+#include "net/include/random.h"
 #include "pstd/include/pstd_mutex.h"
-
+ 
 namespace net {
 
-using TaskFunc = void (*)(void *);
+using TaskFunc = void (*)(void*);
 
-struct Task {
-  Task() = default;
-  TaskFunc func = nullptr;
-  void* arg = nullptr;
-  Task(TaskFunc _func, void* _arg) : func(_func), arg(_arg) {}
-};
+// struct Task {
+//   Task() = default;
+//   TaskFunc func = nullptr;
+//   void* arg = nullptr;
+//   Task(TaskFunc _func, void* _arg) : func(_func), arg(_arg) {}
+// };
 
 struct TimeTask {
   uint64_t exec_time;
@@ -50,7 +50,7 @@ class ThreadPool : public pstd::noncopyable {
     std::string worker_name_;
   };
 
-  explicit ThreadPool(size_t worker_num, size_t max_queue_size, std::string  thread_pool_name = "ThreadPool");
+  explicit ThreadPool(size_t worker_num, size_t max_queue_size, std::string thread_pool_name = "ThreadPool");
   virtual ~ThreadPool();
 
   int start_thread_pool();
@@ -69,19 +69,67 @@ class ThreadPool : public pstd::noncopyable {
  private:
   void runInThread();
 
-  size_t worker_num_;
+ public:
+  struct AdaptationContext {
+    std::atomic<int32_t> value;
+
+    explicit AdaptationContext() : value(0) {}
+  };
+
+ private:
+  struct Node {
+    Node* link_older = nullptr;
+    Node* link_newer = nullptr;
+
+    // true if task is TimeTask
+    bool is_time_task;
+    TimeTask task;
+
+    Node(TaskFunc func, void* arg) : is_time_task(false), task(0, func, arg) {}
+    Node(uint64_t exec_time, TaskFunc func, void* arg) : is_time_task(true), task(exec_time, func, arg) {}
+
+    inline void Exec() { task.func(task.arg); }
+    inline Node* Next() { return link_newer; }
+  };
+
+  static inline void AsmVolatilePause() {
+#if defined(__i386__) || defined(__x86_64__)
+    asm volatile("pause");
+#elif defined(__aarch64__)
+    asm volatile("wfe");
+#elif defined(__powerpc64__)
+    asm volatile("or 27,27,27");
+#endif
+    // it's okay for other platforms to be no-ops
+  }
+
+  Node* CreateMissingNewerLinks(Node* head, int* cnt);
+  bool LinkOne(Node* node, std::atomic<Node*>* newest_node);
+
+  std::atomic<Node*> newest_node_;
+  std::atomic<int> node_cnt_;  // for task
+  std::atomic<Node*> time_newest_node_;
+  std::atomic<int> time_node_cnt_;  // for time task
+
+  const int queue_slow_size_;  // default value: max(worker_num_ * 100, max_queue_size_)
   size_t max_queue_size_;
+
+  const uint64_t max_yield_usec_;
+  const uint64_t slow_yield_usec_;
+
+  AdaptationContext adp_ctx;
+
+  size_t worker_num_;
   std::string thread_pool_name_;
-  std::queue<Task> queue_;
-  std::priority_queue<TimeTask> time_queue_;
+  // std::queue<TimeTask> queue_;
+  // std::priority_queue<TimeTask> time_queue_;
   std::vector<Worker*> workers_;
   std::atomic<bool> running_;
   std::atomic<bool> should_stop_;
 
   pstd::Mutex mu_;
   pstd::CondVar rsignal_;
-  pstd::CondVar wsignal_;
-
+  // pstd::CondVar wsignal_;
 };
 
 }  // namespace net

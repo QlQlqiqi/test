@@ -111,7 +111,7 @@ class ThreadPool : public pstd::noncopyable {
   std::atomic<Node*> time_newest_node_;
   std::atomic<int> time_node_cnt_;  // for time task
 
-  const int queue_slow_size_;  // default value: max(worker_num_ * 100, max_queue_size_)
+  const int queue_slow_size_;  // default value: min(worker_num_ * 10, max_queue_size_)
   size_t max_queue_size_;
 
   const uint64_t max_yield_usec_;

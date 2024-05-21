@@ -46,7 +46,7 @@ int ThreadPool::Worker::stop() {
 ThreadPool::ThreadPool(size_t worker_num, size_t max_queue_size, std::string thread_pool_name)
     : newest_node_(nullptr),
       node_cnt_(0),
-      queue_slow_size_(std::max(worker_num_ * 100, max_queue_size_)),
+      queue_slow_size_(std::min(worker_num_ * 10, max_queue_size_)),
       max_yield_usec_(100),
       slow_yield_usec_(3),
       adp_ctx(),

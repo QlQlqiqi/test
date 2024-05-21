@@ -160,21 +160,21 @@ void ThreadPool::runInThread() {
     time_last = time_newest_node_.exchange(nullptr);
     if (last == nullptr && LIKELY(time_last == nullptr)) {
       // 1. loop for short time
-      for (uint32_t tries = 0; tries < 200; ++tries) {
-        if (newest_node_.load(std::memory_order_acquire) != nullptr) {
-          last = newest_node_.exchange(nullptr);
-          if (last != nullptr) {
-            goto exec;
-          }
-        }
-        if (UNLIKELY(time_newest_node_.load(std::memory_order_acquire) != nullptr)) {
-          time_last = time_newest_node_.exchange(nullptr);
-          if (time_last != nullptr) {
-            goto exec;
-          }
-        }
-        AsmVolatilePause();
-      }
+      // for (uint32_t tries = 0; tries < 200; ++tries) {
+      //   if (newest_node_.load(std::memory_order_acquire) != nullptr) {
+      //     last = newest_node_.exchange(nullptr);
+      //     if (last != nullptr) {
+      //       goto exec;
+      //     }
+      //   }
+      //   if (UNLIKELY(time_newest_node_.load(std::memory_order_acquire) != nullptr)) {
+      //     time_last = time_newest_node_.exchange(nullptr);
+      //     if (time_last != nullptr) {
+      //       goto exec;
+      //     }
+      //   }
+      //   AsmVolatilePause();
+      // }
       continue;
       // 2. loop for a little short time again
       // const size_t kMaxSlowYieldsWhileSpinning = 3;

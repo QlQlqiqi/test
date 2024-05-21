@@ -49,7 +49,7 @@ ThreadPool::ThreadPool(size_t worker_num, size_t max_queue_size, std::string thr
       queue_slow_size_(std::min(worker_num_ * 10, max_queue_size_)),
       max_yield_usec_(100),
       slow_yield_usec_(3),
-      adp_ctx(),
+      // adp_ctx(),
       worker_num_(worker_num),
       max_queue_size_(max_queue_size),
       thread_pool_name_(std::move(thread_pool_name)),
@@ -174,65 +174,65 @@ void ThreadPool::runInThread() {
         }
         AsmVolatilePause();
       }
-
+      continue;
       // 2. loop for a little short time again
-      const size_t kMaxSlowYieldsWhileSpinning = 3;
-      auto& yield_credit = adp_ctx.value;
-      bool update_ctx = false;
-      bool would_spin_again = false;
-      const int sampling_base = 256;
+      // const size_t kMaxSlowYieldsWhileSpinning = 3;
+      // auto& yield_credit = adp_ctx.value;
+      // bool update_ctx = false;
+      // bool would_spin_again = false;
+      // const int sampling_base = 256;
 
-      update_ctx = Random::GetTLSInstance()->OneIn(sampling_base);
+      // update_ctx = Random::GetTLSInstance()->OneIn(sampling_base);
 
-      if (update_ctx || yield_credit.load(std::memory_order_relaxed) >= 0) {
-        auto spin_begin = std::chrono::steady_clock::now();
+      // if (update_ctx || yield_credit.load(std::memory_order_relaxed) >= 0) {
+      //   auto spin_begin = std::chrono::steady_clock::now();
 
-        size_t slow_yield_count = 0;
+      //   size_t slow_yield_count = 0;
 
-        auto iter_begin = spin_begin;
-        while ((iter_begin - spin_begin) <= std::chrono::microseconds(max_yield_usec_)) {
-          std::this_thread::yield();
+      //   auto iter_begin = spin_begin;
+      //   while ((iter_begin - spin_begin) <= std::chrono::microseconds(max_yield_usec_)) {
+      //     std::this_thread::yield();
 
-          if (newest_node_.load(std::memory_order_acquire) != nullptr) {
-            last = newest_node_.exchange(nullptr);
-            if (last != nullptr) {
-              would_spin_again = true;
-              // success
-              break;
-            }
-          }
-          if (UNLIKELY(time_newest_node_.load(std::memory_order_acquire) != nullptr)) {
-            time_last = time_newest_node_.exchange(nullptr);
-            if (time_last != nullptr) {
-              would_spin_again = true;
-              // success
-              break;
-            }
-          }
+      //     if (newest_node_.load(std::memory_order_acquire) != nullptr) {
+      //       last = newest_node_.exchange(nullptr);
+      //       if (last != nullptr) {
+      //         would_spin_again = true;
+      //         // success
+      //         break;
+      //       }
+      //     }
+      //     if (UNLIKELY(time_newest_node_.load(std::memory_order_acquire) != nullptr)) {
+      //       time_last = time_newest_node_.exchange(nullptr);
+      //       if (time_last != nullptr) {
+      //         would_spin_again = true;
+      //         // success
+      //         break;
+      //       }
+      //     }
 
-          auto now = std::chrono::steady_clock::now();
-          if (now == iter_begin || now - iter_begin >= std::chrono::microseconds(slow_yield_usec_)) {
-            ++slow_yield_count;
-            if (slow_yield_count >= kMaxSlowYieldsWhileSpinning) {
-              update_ctx = true;
-              break;
-            }
-          }
-          iter_begin = now;
-        }
-      }
+      //     auto now = std::chrono::steady_clock::now();
+      //     if (now == iter_begin || now - iter_begin >= std::chrono::microseconds(slow_yield_usec_)) {
+      //       ++slow_yield_count;
+      //       if (slow_yield_count >= kMaxSlowYieldsWhileSpinning) {
+      //         update_ctx = true;
+      //         break;
+      //       }
+      //     }
+      //     iter_begin = now;
+      //   }
+      // }
 
-      // update percentage of next loop 2
-      if (update_ctx) {
-        auto v = yield_credit.load(std::memory_order_relaxed);
-        v = v - (v / 1024) + (would_spin_again ? 1 : -1) * 131072;
-        yield_credit.store(v, std::memory_order_relaxed);
-      }
+      // // update percentage of next loop 2
+      // if (update_ctx) {
+      //   auto v = yield_credit.load(std::memory_order_relaxed);
+      //   v = v - (v / 1024) + (would_spin_again ? 1 : -1) * 131072;
+      //   yield_credit.store(v, std::memory_order_relaxed);
+      // }
 
-      if (!would_spin_again) {
-        // 3. wait for new task
-        continue;
-      }
+      // if (!would_spin_again) {
+      //   // 3. wait for new task
+      //   continue;
+      // }
     }
 
   exec:

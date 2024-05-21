@@ -11,7 +11,8 @@
 #include <string>
 
 #include "net/include/net_define.h"
-#include "net/include/random.h"
+// #include "net/include/random.h"
+#include "net/include/likely.h"
 #include "pstd/include/pstd_mutex.h"
  
 namespace net {
@@ -69,12 +70,12 @@ class ThreadPool : public pstd::noncopyable {
  private:
   void runInThread();
 
- public:
-  struct AdaptationContext {
-    std::atomic<int32_t> value;
+//  public:
+//   struct AdaptationContext {
+//     std::atomic<int32_t> value;
 
-    explicit AdaptationContext() : value(0) {}
-  };
+//     explicit AdaptationContext() : value(0) {}
+//   };
 
  private:
   struct Node {
@@ -117,7 +118,7 @@ class ThreadPool : public pstd::noncopyable {
   const uint64_t max_yield_usec_;
   const uint64_t slow_yield_usec_;
 
-  AdaptationContext adp_ctx;
+  // AdaptationContext adp_ctx;
 
   size_t worker_num_;
   std::string thread_pool_name_;

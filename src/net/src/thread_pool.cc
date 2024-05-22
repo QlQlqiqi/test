@@ -245,12 +245,12 @@ void ThreadPool::runInThread() {
     if (LIKELY(last != nullptr)) {
       int cnt = 0;
       auto first = CreateMissingNewerLinks(last, &cnt);
+      node_cnt_ -= cnt;
       assert(!first->is_time_task);
       do {
         first->Exec();
         tmp = first;
         first = first->Next();
-        node_cnt_--;
         delete tmp;
       } while (first != nullptr);
     }
@@ -259,6 +259,7 @@ void ThreadPool::runInThread() {
     if (UNLIKELY(time_last != nullptr)) {
       int time_cnt = 0;
       auto time_first = CreateMissingNewerLinks(time_last, &time_cnt);
+      time_node_cnt_ -= time_cnt;
       do {
         // time task may block normal task
         auto now = std::chrono::system_clock::now();
@@ -276,7 +277,6 @@ void ThreadPool::runInThread() {
         }
         tmp = time_first;
         time_first = time_first->Next();
-        time_node_cnt_--;
         delete tmp;
       } while (time_first != nullptr);
     }

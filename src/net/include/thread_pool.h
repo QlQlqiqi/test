@@ -122,15 +122,12 @@ class ThreadPool : public pstd::noncopyable {
 
   size_t worker_num_;
   std::string thread_pool_name_;
-  // std::queue<TimeTask> queue_;
-  // std::priority_queue<TimeTask> time_queue_;
   std::vector<Worker*> workers_;
   std::atomic<bool> running_;
   std::atomic<bool> should_stop_;
 
   pstd::Mutex mu_;
   pstd::CondVar rsignal_;
-  // pstd::CondVar wsignal_;
 };
 
 }  // namespace net

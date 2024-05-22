@@ -11,7 +11,7 @@
 #include <cassert>
 #include <thread>
 #include <utility>
- 
+
 namespace net {
 
 void* ThreadPool::Worker::WorkerMain(void* arg) {

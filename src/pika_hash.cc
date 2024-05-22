@@ -27,11 +27,8 @@ void HDelCmd::DoInitial() {
 
 void HDelCmd::Do() {
   s_ = db_->storage()->HDel(key_, fields_, &deleted_);
-
   if (s_.ok() || s_.IsNotFound()) {
     res_.AppendInteger(deleted_);
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -43,7 +40,8 @@ void HDelCmd::DoThroughDB() {
 
 void HDelCmd::DoUpdateCache() {
   if (s_.ok() && deleted_ > 0) {
-    db_->cache()->HDel(key_, fields_);
+    std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+    db_->cache()->HDel(CachePrefixKeyH, fields_);
   }
 }
 
@@ -63,8 +61,6 @@ void HSetCmd::Do() {
   if (s_.ok()) {
     res_.AppendContent(":" + std::to_string(ret));
     AddSlotKey("h", key_, db_);
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -76,7 +72,8 @@ void HSetCmd::DoThroughDB() {
 
 void HSetCmd::DoUpdateCache() {
   if (s_.ok()) {
-    db_->cache()->HSetIfKeyExist(key_, field_, value_);
+    std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+    db_->cache()->HSetIfKeyExist(CachePrefixKeyH, field_, value_);
   }
 }
 
@@ -95,8 +92,6 @@ void HGetCmd::Do() {
   if (s_.ok()) {
     res_.AppendStringLenUint64(value.size());
     res_.AppendContent(value);
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else if (s_.IsNotFound()) {
     res_.AppendContent("$-1");
   } else {
@@ -106,7 +101,8 @@ void HGetCmd::Do() {
 
 void HGetCmd::ReadCache() {
   std::string value;
-  auto s = db_->cache()->HGet(key_, field_, &value);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HGet(CachePrefixKeyH, field_, &value);
   if (s.ok()) {
     res_.AppendStringLen(value.size());
     res_.AppendContent(value);
@@ -177,7 +173,8 @@ void HGetallCmd::Do() {
 
 void HGetallCmd::ReadCache() {
   std::vector<storage::FieldValue> fvs;
-  auto s = db_->cache()->HGetall(key_, &fvs);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HGetall(CachePrefixKeyH, &fvs);
   if (s.ok()) {
     res_.AppendArrayLen(fvs.size() * 2);
     for (const auto& fv : fvs) {
@@ -217,8 +214,6 @@ void HExistsCmd::Do() {
   s_ = db_->storage()->HExists(key_, field_);
   if (s_.ok()) {
     res_.AppendContent(":1");
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else if (s_.IsNotFound()) {
     res_.AppendContent(":0");
   } else {
@@ -227,7 +222,8 @@ void HExistsCmd::Do() {
 }
 
 void HExistsCmd::ReadCache() {
-  auto s = db_->cache()->HExists(key_, field_);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HExists(CachePrefixKeyH, field_);
   if (s.ok()) {
     res_.AppendContent(":1");
   } else if (s.IsNotFound()) {
@@ -267,8 +263,6 @@ void HIncrbyCmd::Do() {
   if (s_.ok() || s_.IsNotFound()) {
     res_.AppendContent(":" + std::to_string(new_value));
     AddSlotKey("h", key_, db_);
-  } else if (s_.IsInvalidArgument() && s_.ToString().substr(0, std::char_traits<char>::length(ErrTypeMessage)) == ErrTypeMessage) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else if (s_.IsCorruption() && s_.ToString() == "Corruption: hash value is not an integer") {
     res_.SetRes(CmdRes::kInvalidInt);
   } else if (s_.IsInvalidArgument()) {
@@ -284,7 +278,8 @@ void HIncrbyCmd::DoThroughDB() {
 
 void HIncrbyCmd::DoUpdateCache() {
   if (s_.ok()) {
-    db_->cache()->HIncrbyxx(key_, field_, by_);
+    std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+    db_->cache()->HIncrbyxx(CachePrefixKeyH, field_, by_);
   }
 }
 
@@ -305,8 +300,6 @@ void HIncrbyfloatCmd::Do() {
     res_.AppendStringLenUint64(new_value.size());
     res_.AppendContent(new_value);
     AddSlotKey("h", key_, db_);
-  } else if (s_.IsInvalidArgument() && s_.ToString().substr(0, std::char_traits<char>::length(ErrTypeMessage)) == ErrTypeMessage) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else if (s_.IsCorruption() && s_.ToString() == "Corruption: value is not a vaild float") {
     res_.SetRes(CmdRes::kInvalidFloat);
   } else if (s_.IsInvalidArgument()) {
@@ -324,7 +317,8 @@ void HIncrbyfloatCmd::DoUpdateCache() {
   if (s_.ok()) {
     long double long_double_by;
     if (storage::StrToLongDouble(by_.data(), by_.size(), &long_double_by) != -1) {
-      db_->cache()->HIncrbyfloatxx(key_, field_, long_double_by);
+      std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+      db_->cache()->HIncrbyfloatxx(CachePrefixKeyH, field_, long_double_by);
     }
   }
 }
@@ -345,8 +339,6 @@ void HKeysCmd::Do() {
     for (const auto& field : fields) {
       res_.AppendString(field);
     }
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -354,7 +346,8 @@ void HKeysCmd::Do() {
 
 void HKeysCmd::ReadCache() {
   std::vector<std::string> fields;
-  auto s = db_->cache()->HKeys(key_, &fields);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HKeys(CachePrefixKeyH, &fields);
   if (s.ok()) {
     res_.AppendArrayLen(fields.size());
     for (const auto& field : fields) {
@@ -391,8 +384,6 @@ void HLenCmd::Do() {
   s_ = db_->storage()->HLen(key_, &len);
   if (s_.ok() || s_.IsNotFound()) {
     res_.AppendInteger(len);
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, "something wrong in hlen");
   }
@@ -400,7 +391,8 @@ void HLenCmd::Do() {
 
 void HLenCmd::ReadCache() {
   uint64_t len = 0;
-  auto s = db_->cache()->HLen(key_, &len);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HLen(CachePrefixKeyH, &len);
   if (s.ok()) {
     res_.AppendInteger(len);
   } else if (s.IsNotFound()) {
@@ -446,8 +438,6 @@ void HMgetCmd::Do() {
         res_.AppendContent("$-1");
       }
     }
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -455,7 +445,8 @@ void HMgetCmd::Do() {
 
 void HMgetCmd::ReadCache() {
   std::vector<storage::ValueStatus> vss;
-  auto s = db_->cache()->HMGet(key_, fields_, &vss);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HMGet(CachePrefixKeyH, fields_, &vss);
   if (s.ok()) {
     res_.AppendArrayLen(vss.size());
     for (const auto& vs : vss) {
@@ -507,8 +498,6 @@ void HMsetCmd::Do() {
   if (s_.ok()) {
     res_.SetRes(CmdRes::kOk);
     AddSlotKey("h", key_, db_);
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -520,7 +509,8 @@ void HMsetCmd::DoThroughDB() {
 
 void HMsetCmd::DoUpdateCache() {
   if (s_.ok()) {
-    db_->cache()->HMSetxx(key_, fvs_);
+    std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+    db_->cache()->HMSetxx(CachePrefixKeyH, fvs_);
   }
 }
 
@@ -540,8 +530,6 @@ void HSetnxCmd::Do() {
   if (s_.ok()) {
     res_.AppendContent(":" + std::to_string(ret));
     AddSlotKey("h", key_, db_);
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -553,7 +541,8 @@ void HSetnxCmd::DoThroughDB() {
 
 void HSetnxCmd::DoUpdateCache() {
   if (s_.ok()) {
-    db_->cache()->HSetIfKeyExistAndFieldNotExist(key_, field_, value_);
+    std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+    db_->cache()->HSetIfKeyExistAndFieldNotExist(CachePrefixKeyH, field_, value_);
   }
 }
 
@@ -571,8 +560,6 @@ void HStrlenCmd::Do() {
   s_ = db_->storage()->HStrlen(key_, field_, &len);
   if (s_.ok() || s_.IsNotFound()) {
     res_.AppendInteger(len);
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, "something wrong in hstrlen");
   }
@@ -580,7 +567,8 @@ void HStrlenCmd::Do() {
 
 void HStrlenCmd::ReadCache() {
   uint64_t len = 0;
-  auto s = db_->cache()->HStrlen(key_, field_, &len);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HStrlen(CachePrefixKeyH, field_, &len);
   if (s.ok()) {
     res_.AppendInteger(len);
   } else if (s.IsNotFound()) {
@@ -619,8 +607,6 @@ void HValsCmd::Do() {
       res_.AppendStringLenUint64(value.size());
       res_.AppendContent(value);
     }
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -628,7 +614,8 @@ void HValsCmd::Do() {
 
 void HValsCmd::ReadCache() {
   std::vector<std::string> values;
-  auto s = db_->cache()->HVals(key_, &values);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key_;
+  auto s = db_->cache()->HVals(CachePrefixKeyH, &values);
   if (s.ok()) {
     res_.AppendArrayLen(values.size());
     for (const auto& value : values) {
@@ -709,8 +696,6 @@ void HScanCmd::Do() {
       res_.AppendString(field_value.field);
       res_.AppendString(field_value.value);
     }
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s.ToString());
   }
@@ -767,8 +752,6 @@ void HScanxCmd::Do() {
       res_.AppendString(field_value.field);
       res_.AppendString(field_value.value);
     }
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
@@ -822,8 +805,6 @@ void PKHScanRangeCmd::Do() {
       res_.AppendString(field_value.field);
       res_.AppendString(field_value.value);
     }
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
   } else {
     res_.SetRes(CmdRes::kErrOther, s.ToString());
   }
@@ -877,9 +858,7 @@ void PKHRScanRangeCmd::Do() {
       res_.AppendString(field_value.field);
       res_.AppendString(field_value.value);
     }
-  } else if (s_.IsInvalidArgument()) {
-    res_.SetRes(CmdRes::kMultiKey);
-  }  else {
+  } else {
     res_.SetRes(CmdRes::kErrOther, s_.ToString());
   }
 }

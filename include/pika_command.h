@@ -111,6 +111,7 @@ const std::string kCmdNameTtl = "ttl";
 const std::string kCmdNamePttl = "pttl";
 const std::string kCmdNamePersist = "persist";
 const std::string kCmdNameType = "type";
+const std::string kCmdNamePType = "ptype";
 const std::string kCmdNameScan = "scan";
 const std::string kCmdNameScanx = "scanx";
 const std::string kCmdNamePKSetexAt = "pksetexat";
@@ -247,12 +248,6 @@ const std::string kCmdNameXInfo = "xinfo";
 
 const std::string kClusterPrefix = "pkcluster";
 
-/*
- * If a type holds a key, a new data structure
- * that uses the key will use this error
- */
-constexpr const char* ErrTypeMessage = "Invalid argument: WRONGTYPE";
-
 using PikaCmdArgsType = net::RedisCmdArgsType;
 static const int RAW_ARGS_LEN = 1024 * 1024;
 
@@ -331,7 +326,6 @@ class CmdRes {
     kInvalidTransaction,
     kTxnQueued,
     kTxnAbort,
-    kMultiKey
   };
 
   CmdRes() = default;
@@ -424,10 +418,6 @@ class CmdRes {
       case KIncrByOverFlow:
         result = "-ERR increment would produce NaN or Infinity";
         result.append(message_);
-        result.append(kNewLine);
-        break;
-      case kMultiKey:
-        result = "-WRONGTYPE Operation against a key holding the wrong kind of value";
         result.append(kNewLine);
         break;
       default:

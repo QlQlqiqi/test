@@ -61,7 +61,8 @@ bool PikaCacheLoadThread::LoadKV(std::string& key, const std::shared_ptr<DB>& db
     LOG(WARNING) << "load kv failed, key=" << key;
     return false;
   }
-  db->cache()->WriteKVToCache(key, value, ttl);
+  std::string CachePrefixKeyK = PCacheKeyPrefixK + key;
+  db->cache()->WriteKVToCache(CachePrefixKeyK, value, ttl);
   return true;
 }
 
@@ -81,7 +82,8 @@ bool PikaCacheLoadThread::LoadHash(std::string& key, const std::shared_ptr<DB>& 
     LOG(WARNING) << "load hash failed, key=" << key;
     return false;
   }
-  db->cache()->WriteHashToCache(key, fvs, ttl);
+  std::string CachePrefixKeyH = PCacheKeyPrefixH + key;
+  db->cache()->WriteHashToCache(CachePrefixKeyH, fvs, ttl);
   return true;
 }
 
@@ -101,7 +103,8 @@ bool PikaCacheLoadThread::LoadList(std::string& key, const std::shared_ptr<DB>& 
     LOG(WARNING) << "load list failed, key=" << key;
     return false;
   }
-  db->cache()->WriteListToCache(key, values, ttl);
+  std::string CachePrefixKeyL = PCacheKeyPrefixL + key;
+  db->cache()->WriteListToCache(CachePrefixKeyL, values, ttl);
   return true;
 }
 
@@ -121,7 +124,8 @@ bool PikaCacheLoadThread::LoadSet(std::string& key, const std::shared_ptr<DB>& d
     LOG(WARNING) << "load set failed, key=" << key;
     return false;
   }
-  db->cache()->WriteSetToCache(key, values, ttl);
+  std::string CachePrefixKeyS = PCacheKeyPrefixS + key;
+  db->cache()->WriteSetToCache(CachePrefixKeyS, values, ttl);
   return true;
 }
 
@@ -135,7 +139,8 @@ bool PikaCacheLoadThread::LoadZset(std::string& key, const std::shared_ptr<DB>& 
   }
 
   uint64_t cache_len = 0;
-  db->cache()->CacheZCard(key, &cache_len);
+  std::string CachePrefixKeyZ = PCacheKeyPrefixZ + key;
+  db->cache()->CacheZCard(CachePrefixKeyZ, &cache_len);
   if (cache_len != 0) {
     return true;
   }
@@ -156,7 +161,7 @@ bool PikaCacheLoadThread::LoadZset(std::string& key, const std::shared_ptr<DB>& 
     LOG(WARNING) << "load zset failed, key=" << key;
     return false;
   }
-  db->cache()->WriteZSetToCache(key, score_members, ttl);
+  db->cache()->WriteZSetToCache(CachePrefixKeyZ, score_members, ttl);
   return true;
 }
 
@@ -202,15 +207,15 @@ void *PikaCacheLoadThread::ThreadMain() {
         }
       }
     }
-    for (auto & load_key : load_keys) {
-      if (LoadKey(std::get<0>(load_key), std::get<1>(load_key), std::get<2>(load_key))) {
+    for (auto iter = load_keys.begin(); iter != load_keys.end(); ++iter) {
+      if (LoadKey(std::get<0>(*iter), std::get<1>(*iter), std::get<2>(*iter))) {
         ++async_load_keys_num_;
       } else {
-        LOG(WARNING) << "PikaCacheLoadThread::ThreadMain LoadKey: " << std::get<1>(load_key) << " failed !!!";
+        LOG(WARNING) << "PikaCacheLoadThread::ThreadMain LoadKey: " << std::get<1>(*iter) << " failed !!!";
       }
 
       std::unique_lock lm(loadkeys_map_mutex_);
-      loadkeys_map_.erase(std::get<1>(load_key));
+      loadkeys_map_.erase(std::get<1>(*iter));
     }
   }
 

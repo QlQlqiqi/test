@@ -15,7 +15,7 @@ func AssertEqualRedisString(expected string, result redis.Cmder) {
 		Expect(strings.HasSuffix(result.String(), "nil")).To(BeTrue())
 	} else {
 		if !strings.HasSuffix(result.String(), expected) {
-			Expect(expected).NotTo(BeEquivalentTo(result.String()))
+			Expect(expected).To(BeEquivalentTo(result.String()))
 		}
 	}
 }
@@ -52,10 +52,12 @@ var _ = Describe("Text Txn", func() {
 			watchkeyValue := "value"
 			status := cmdClient.Set(ctx, watchKey, watchkeyValue, 0)
 			Expect(status.Err()).NotTo(HaveOccurred())
+			intCmd := cmdClient.LPush(ctx, watchKey, watchkeyValue, watchkeyValue)
+			Expect(intCmd.Err()).NotTo(HaveOccurred())
 			err := txnClient.Watch(ctx, func(tx *redis.Tx) error {
 				return nil
 			}, watchKey)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 		// Testing the flushall command will cause watch's key to fail
 		It("txn failed cause of flushall", func() {
@@ -85,6 +87,8 @@ var _ = Describe("Text Txn", func() {
 			modifiedValue := "modified"
 			status := cmdClient.Set(ctx, watchKey, watchkeyValue, 0)
 			Expect(status.Err()).NotTo(HaveOccurred())
+			intCmd := cmdClient.LPush(ctx, watchKey, watchkeyValue, watchkeyValue)
+			Expect(intCmd.Err()).NotTo(HaveOccurred())
 
 			err := txnClient.Watch(ctx, func(tx *redis.Tx) error {
 				tx.Select(ctx, 1) // this command used the same port with txnClient.Watch
@@ -254,6 +258,7 @@ var _ = Describe("Text Txn", func() {
 				pipe := tx.TxPipeline()
 				pipe.LPush(ctx, "list", "a")
 				pipe.Del(ctx, "list")
+				pipe.Set(ctx, "list", "foo", 0)
 				_, err := pipe.Exec(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				return nil

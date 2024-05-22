@@ -18,13 +18,6 @@ namespace net {
 
 using TaskFunc = void (*)(void*);
 
-// struct Task {
-//   Task() = default;
-//   TaskFunc func = nullptr;
-//   void* arg = nullptr;
-//   Task(TaskFunc _func, void* _arg) : func(_func), arg(_arg) {}
-// };
-
 struct TimeTask {
   uint64_t exec_time;
   TaskFunc func;

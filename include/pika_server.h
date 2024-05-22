@@ -51,12 +51,21 @@ extern std::unique_ptr<PikaConf> g_pika_conf;
 
 enum TaskType {
   kCompactAll,
+  kCompactStrings,
+  kCompactHashes,
+  kCompactSets,
+  kCompactZSets,
+  kCompactList,
   kResetReplState,
   kPurgeLog,
   kStartKeyScan,
   kStopKeyScan,
   kBgSave,
-  kCompactRangeAll,
+  kCompactRangeStrings,
+  kCompactRangeHashes,
+  kCompactRangeSets,
+  kCompactRangeZSets,
+  kCompactRangeList,
 };
 
 struct TaskArg {

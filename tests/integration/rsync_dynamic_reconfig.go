@@ -130,7 +130,7 @@ var _ = Describe("Rsync Reconfig Test", func() {
 		Expect(slave2.Close()).NotTo(HaveOccurred())
 		Expect(master1.Close()).NotTo(HaveOccurred())
 	})
-
+ 
 	It("rsync reconfig rsync-timeout-ms, throttle-bytes-per-second", func() {
 		slave1.SlaveOf(ctx, "no", "one")
 		slave1.FlushDB(ctx)

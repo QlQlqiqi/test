@@ -96,7 +96,7 @@ class ThreadPool : public pstd::noncopyable {
     // it's okay for other platforms to be no-ops
   }
 
-  Node* CreateMissingNewerLinks(Node* head);
+  Node* CreateMissingNewerLinks(Node* head, int *cnt);
   bool LinkOne(Node* node, std::atomic<Node*>* newest_node);
 
   std::atomic<Node*> newest_node_;

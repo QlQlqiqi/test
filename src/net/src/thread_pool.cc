@@ -107,7 +107,7 @@ void ThreadPool::Schedule(TaskFunc func, void* arg) {
   if (node_cnt_.load(std::memory_order_relaxed) >= queue_slow_size_) {
     std::this_thread::yield();
   }
-    // std::unique_lock lock(mu_);
+  // std::unique_lock lock(mu_);
   if (LIKELY(!should_stop())) {
     auto node = new Node(func, arg);
     LinkOne(node, &newest_node_);
@@ -124,7 +124,7 @@ void ThreadPool::DelaySchedule(uint64_t timeout, TaskFunc func, void* arg) {
   uint64_t unow = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
   uint64_t exec_time = unow + timeout * 1000;
 
-    // std::unique_lock lock(mu_);
+  // std::unique_lock lock(mu_);
   if (LIKELY(!should_stop())) {
     auto node = new Node(exec_time, func, arg);
     LinkOne(node, &time_newest_node_);
@@ -179,7 +179,7 @@ void ThreadPool::runInThread() {
         }
         AsmVolatilePause();
       }
-      
+
       // 2. loop for a little short time again
       const size_t kMaxSlowYieldsWhileSpinning = 3;
       auto& yield_credit = adp_ctx.value;
@@ -243,20 +243,23 @@ void ThreadPool::runInThread() {
   exec:
     // do all normal tasks older than this task pointed last
     if (LIKELY(last != nullptr)) {
-      auto first = CreateMissingNewerLinks(last);
+      int cnt = 1;
+      auto first = CreateMissingNewerLinks(last, &cnt);
+      node_cnt_ -= cnt;
       assert(!first->is_time_task);
       do {
         first->Exec();
         tmp = first;
         first = first->Next();
-        node_cnt_--;
+        // node_cnt_--;
         delete tmp;
       } while (first != nullptr);
     }
 
     // do all time tasks older than this task pointed time_last
     if (UNLIKELY(time_last != nullptr)) {
-      auto time_first = CreateMissingNewerLinks(time_last);
+      int cnt = 1;
+      auto time_first = CreateMissingNewerLinks(time_last, &cnt);
       do {
         // time task may block normal task
         auto now = std::chrono::system_clock::now();
@@ -282,14 +285,16 @@ void ThreadPool::runInThread() {
   }
 }
 
-ThreadPool::Node* ThreadPool::CreateMissingNewerLinks(Node* head) {
+ThreadPool::Node* ThreadPool::CreateMissingNewerLinks(Node* head, int* cnt) {
   assert(head != nullptr);
+  assert(cnt != nullptr && *cnt == 1);
   Node* next = nullptr;
   while (true) {
     next = head->link_older;
     if (next == nullptr) {
       return head;
     }
+    ++(*cnt);
     next->link_newer = head;
     head = next;
   }

@@ -239,7 +239,7 @@ void ThreadPool::runInThread() {
         continue;
       }
     }
- 
+
   exec:
     // do all normal tasks older than this task pointed last
     if (LIKELY(last != nullptr)) {

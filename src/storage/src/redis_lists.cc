@@ -1139,13 +1139,11 @@ Status Redis::ListsDel(const Slice& key) {
         ListsDataKey lists_data_key(key, version, idx);
         batch.Delete(handles_[kListsDataCF], lists_data_key.Encode());
       }
+      uint64_t statistic = parsed_lists_meta_value.Count();
+      parsed_lists_meta_value.InitialMetaValue();
+      batch.Put(handles_[kMetaCF], base_meta_key.Encode(), meta_value);
+      UpdateSpecificKeyStatistics(DataType::kLists, key.ToString(), statistic);
       s = db_->Write(default_write_options_, &batch);
-      if(s.ok()) {
-        uint64_t statistic = parsed_lists_meta_value.Count();
-        parsed_lists_meta_value.InitialMetaValue();
-        s = db_->Put(default_write_options_, handles_[kMetaCF], base_meta_key.Encode(), meta_value);
-        UpdateSpecificKeyStatistics(DataType::kLists, key.ToString(), statistic);
-      }
     }
   }
   return s;

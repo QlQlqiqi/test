@@ -133,7 +133,7 @@ Status Redis::LInsert(const Slice& key, const BeforeOrAfter& before_or_after, co
       ListsDataKey upper_bound_data_key(key, version + 1, 0);
       rocksdb::Slice upper_bound = upper_bound_data_key.Encode();
       read_options.iterate_upper_bound = &upper_bound;
-      ListsDataKey lower_bound_data_key(key, version == 0 ? 0: version - 1, 0);
+      ListsDataKey lower_bound_data_key(key, version, current_index);
       rocksdb::Slice lower_bound = lower_bound_data_key.Encode();
       read_options.iterate_lower_bound = &lower_bound;
 

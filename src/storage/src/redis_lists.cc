@@ -1093,10 +1093,20 @@ Status Redis::ListsDel(const Slice& key) {
     } else if (parsed_lists_meta_value.Count() == 0) {
       return Status::NotFound();
     } else {
-      uint64_t statistic = parsed_lists_meta_value.Count();
-      parsed_lists_meta_value.InitialMetaValue();
-      s = db_->Put(default_write_options_, handles_[kMetaCF], base_meta_key.Encode(), meta_value);
-      UpdateSpecificKeyStatistics(DataType::kLists, key.ToString(), statistic);
+      // remove data will be removed
+      rocksdb::WriteBatch batch;
+      uint64_t version = parsed_lists_meta_value.Version();
+      for (uint64_t idx = parsed_lists_meta_value.LeftIndex() + 1; idx < parsed_lists_meta_value.RightIndex(); ++idx) {
+        ListsDataKey lists_data_key(key, version, idx);
+        batch.Delete(handles_[kListsDataCF], lists_data_key.Encode());
+      }
+      s = db_->Write(default_write_options_, &batch);
+      if(s.ok()) {
+        uint64_t statistic = parsed_lists_meta_value.Count();
+        parsed_lists_meta_value.InitialMetaValue();
+        s = db_->Put(default_write_options_, handles_[kMetaCF], base_meta_key.Encode(), meta_value);
+        UpdateSpecificKeyStatistics(DataType::kLists, key.ToString(), statistic);
+      }
     }
   }
   return s;

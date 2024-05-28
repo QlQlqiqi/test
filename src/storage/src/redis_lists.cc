@@ -575,9 +575,18 @@ Status Redis::LRem(const Slice& key, int64_t count, const Slice& value, uint64_t
       uint64_t stop_index = parsed_lists_meta_value.RightIndex() - 1;
       ListsDataKey start_data_key(key, version, start_index);
       ListsDataKey stop_data_key(key, version, stop_index);
+
+      rocksdb::ReadOptions read_options(default_read_options_);
+      read_options.fill_cache = false;
+      ListsDataKey upper_bound_data_key(key, version + 1, 0);
+      rocksdb::Slice upper_bound = upper_bound_data_key.Encode();
+      read_options.iterate_upper_bound = &upper_bound;
+      rocksdb::Slice lower_bound = start_data_key.Encode();
+      read_options.iterate_lower_bound = &lower_bound;
+
       if (count >= 0) {
         current_index = start_index;
-        rocksdb::Iterator* iter = db_->NewIterator(default_read_options_, handles_[kListsDataCF]);
+        rocksdb::Iterator* iter = db_->NewIterator(read_options, handles_[kListsDataCF]);
         for (iter->Seek(start_data_key.Encode());
              iter->Valid() && current_index <= stop_index && ((count == 0) || rest != 0);
              iter->Next(), current_index++) {

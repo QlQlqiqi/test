@@ -1389,9 +1389,15 @@ rocksdb::Status Redis::SetsDel(const Slice& key) {
     } else if (parsed_sets_meta_value.Count() == 0) {
       return rocksdb::Status::NotFound();
     } else {
+      rocksdb::WriteBatch batch;
+      uint64_t version = parsed_sets_meta_value.Version();
+      SetsMemberKey start_key(key, version, "");
+      SetsMemberKey end_key(key, version + 1, "");
+      batch.DeleteRange(handles_[kSetsDataCF], start_key.Encode(), end_key.Encode());
       uint32_t statistic = parsed_sets_meta_value.Count();
       parsed_sets_meta_value.InitialMetaValue();
-      s = db_->Put(default_write_options_, handles_[kMetaCF], base_meta_key.Encode(), meta_value);
+      batch.Put(handles_[kMetaCF], base_meta_key.Encode(), meta_value);
+      s = db_->Write(default_write_options_, &batch);
       UpdateSpecificKeyStatistics(DataType::kSets, key.ToString(), statistic);
     }
   }

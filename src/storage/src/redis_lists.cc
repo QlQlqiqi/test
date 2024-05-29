@@ -1135,10 +1135,9 @@ Status Redis::ListsDel(const Slice& key) {
       // remove data will be removed
       rocksdb::WriteBatch batch;
       uint64_t version = parsed_lists_meta_value.Version();
-      for (uint64_t idx = parsed_lists_meta_value.LeftIndex() + 1; idx < parsed_lists_meta_value.RightIndex(); ++idx) {
-        ListsDataKey lists_data_key(key, version, idx);
-        batch.Delete(handles_[kListsDataCF], lists_data_key.Encode());
-      }
+      ListsDataKey start_key(key, version, parsed_lists_meta_value.LeftIndex() + 1);
+      ListsDataKey end_key(key, version, parsed_lists_meta_value.RightIndex() - 1);
+      batch.DeleteRange(handles_[kListsDataCF], start_key.Encode(), end_key.Encode());
       uint64_t statistic = parsed_lists_meta_value.Count();
       parsed_lists_meta_value.InitialMetaValue();
       batch.Put(handles_[kMetaCF], base_meta_key.Encode(), meta_value);

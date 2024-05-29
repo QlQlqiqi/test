@@ -682,6 +682,14 @@ rocksdb::Status Redis::SMembers(const Slice& key, std::vector<std::string>* memb
       SetsMemberKey sets_member_key(key, version, Slice());
       Slice prefix = sets_member_key.EncodeSeekKey();
       KeyStatisticsDurationGuard guard(this, DataType::kSets, key.ToString());
+
+      read_options.fill_cache = false;
+      SetsMemberKey upper_bound_data_key(key, version + 1, "");
+      rocksdb::Slice upper_bound = upper_bound_data_key.Encode();
+      read_options.iterate_upper_bound = &upper_bound;
+      rocksdb::Slice lower_bound = sets_member_key.Encode();
+      read_options.iterate_lower_bound = &lower_bound;
+
       auto iter = db_->NewIterator(read_options, handles_[kSetsDataCF]);
       for (iter->Seek(prefix); iter->Valid() && iter->key().starts_with(prefix); iter->Next()) {
         ParsedSetsMemberKey parsed_sets_member_key(iter->key());

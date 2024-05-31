@@ -1397,8 +1397,8 @@ rocksdb::Status Redis::SetsDel(const Slice& key) {
       uint32_t statistic = parsed_sets_meta_value.Count();
       parsed_sets_meta_value.InitialMetaValue();
       batch.Put(handles_[kMetaCF], base_meta_key.Encode(), meta_value);
-      s = db_->Write(default_write_options_, &batch);
       UpdateSpecificKeyStatistics(DataType::kSets, key.ToString(), statistic);
+      s = db_->Write(default_write_options_, &batch);
     }
   }
   return s;
